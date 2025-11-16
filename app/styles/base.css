@@ -1,0 +1,7 @@
+body {
+  @apply bg-black text-white antialiased;
+}
+
+a {
+  @apply transition-colors;
+}
