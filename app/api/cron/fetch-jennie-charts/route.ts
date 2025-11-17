@@ -5,7 +5,7 @@ const redis = createClient({
   url: process.env.REDIS_URL,
 });
 
-// Avoid duplicate connection in Vercel runtime
+// Avoid duplicate connection in Vercel serverless
 if (!redis.isOpen) {
   redis.connect();
 }
@@ -18,7 +18,9 @@ type TrackRow = {
   url?: string;
 };
 
-// Download + parse CSV (Spotify format)
+// ------------------------------
+// Parse Spotify CSV file
+// ------------------------------
 async function fetchCSV(url: string): Promise<TrackRow[]> {
   const res = await fetch(url);
   const text = await res.text();
@@ -26,8 +28,10 @@ async function fetchCSV(url: string): Promise<TrackRow[]> {
 
   const rows: TrackRow[] = [];
 
+  // Skip header — start at index 1
   for (let i = 1; i < lines.length; i++) {
     const parts = lines[i]
+      // Handle quoted CSV rows correctly
       .split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/)
       .map((x) => x.replace(/^"|"$/g, ""));
 
@@ -47,37 +51,49 @@ async function fetchCSV(url: string): Promise<TrackRow[]> {
 
 export async function GET() {
   try {
-    // --- Fetch TODAY ---
-    const todayCsv =
-      "https://spotifycharts.com/regional/global/daily/latest/download";
+    // -------------------------------------------------------
+    // 1) Spotify "latest" = YESTERDAY'S chart, not today!
+    // -------------------------------------------------------
+    const chartDate = new Date();
+    chartDate.setDate(chartDate.getDate() - 1);
+
+    const chartKey = chartDate.toISOString().slice(0, 10); // YYYY-MM-DD
+
+    const todayCsv = `https://spotifycharts.com/regional/global/daily/${chartKey}/download`;
+
+    // Fetch current chart data
     const todayRows = await fetchCSV(todayCsv);
 
-    // --- Fetch YESTERDAY for movement comparison ---
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const prevDate = yesterday.toISOString().slice(0, 10);
+    // -------------------------------------------------------
+    // 2) Fetch PREVIOUS day for movement comparison
+    // -------------------------------------------------------
+    const prevDateObj = new Date(chartDate);
+    prevDateObj.setDate(prevDateObj.getDate() - 1);
+    const prevDate = prevDateObj.toISOString().slice(0, 10);
 
     let prevRows: TrackRow[] = [];
     try {
       prevRows = await fetchCSV(
         `https://spotifycharts.com/regional/global/daily/${prevDate}/download`
       );
-    } catch {}
+    } catch {
+      prevRows = [];
+    }
 
     const prevMap = new Map<string, TrackRow>();
     prevRows.forEach((r) => {
       prevMap.set(`${r.track}-${r.artist}`, r);
     });
 
-    // --- Jennie Filter ---
-    // Matches:
-    // ✔ Artist contains "Jennie" (solo or featured)
-    // ✔ Track contains "Jennie" (LIKE JENNIE)
+    // -------------------------------------------------------
+    // 3) Correct Jennie detection
+    // -------------------------------------------------------
     const jennieTracks = todayRows
       .filter((t) => {
         const artist = t.artist.toLowerCase();
         const track = t.track.toLowerCase();
 
+        // Jennie solo OR featured
         const isJennieArtist = artist.includes("jennie");
         const isJennieTrack = track.includes("jennie");
 
@@ -94,27 +110,30 @@ export async function GET() {
           streams: t.streams,
           url: t.url,
 
+          // Movement: previous position - today's position
           movement: prev ? prev.position - t.position : null,
 
+          // Stream change
           streamsChange: prev ? t.streams - prev.streams : null,
         };
       });
 
-    const today = new Date().toISOString().slice(0, 10);
-
-    // Save to Redis
+    // -------------------------------------------------------
+    // 4) Save chart under correct Spotify date
+    // -------------------------------------------------------
     await redis.set(
-      `jennie_global_${today}`,
+      `jennie_global_${chartKey}`,
       JSON.stringify({
-        date: today,
+        date: chartKey,
         tracks: jennieTracks,
       })
     );
 
     return NextResponse.json({
       success: true,
-      saved: `jennie_global_${today}`,
+      saved: `jennie_global_${chartKey}`,
       count: jennieTracks.length,
+      chart_date: chartKey,
     });
   } catch (err: any) {
     return NextResponse.json(
