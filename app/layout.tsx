@@ -7,7 +7,11 @@ export const metadata: Metadata = {
   description: "Streaming stats, charts & milestones for Jennie",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <body className="min-h-screen bg-black text-white">
@@ -24,17 +28,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
               <Link href="/" className="hover:text-red-400">Home</Link>
 
-              {/* ⭐ SPOTIFY DROPDOWN ⭐ */}
+              {/* SPOTIFY DROPDOWN */}
               <div className="relative group">
                 <button className="hover:text-red-400 transition flex items-center gap-1">
                   Spotify ▾
                 </button>
 
-                <div className="
-                  absolute hidden group-hover:block
-                  bg-black/90 border border-red-700/40
-                  rounded-xl shadow-xl p-3 w-44 mt-2 z-50
-                ">
+                <div className="absolute hidden group-hover:block bg-black/90 border border-red-700/40 rounded-xl shadow-xl p-3 w-44 mt-2 z-50">
                   <Link href="/spotify" className="block px-2 py-1 rounded hover:bg-red-600/20">
                     Overview
                   </Link>
@@ -57,7 +57,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </div>
               </div>
 
-              {/* OTHER MENUS */}
               <Link href="/youtube" className="hover:text-red-400">YouTube</Link>
               <Link href="/apple" className="hover:text-red-400">Apple Music</Link>
               <Link href="/discography" className="hover:text-red-400">Discography</Link>
@@ -68,9 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </header>
 
         {/* PAGE CONTENT */}
-        <main className="max-w-6xl mx-auto px-4 py-10">
-          {children}
-        </main>
+        <main className="max-w-6xl mx-auto px-4 py-10">{children}</main>
 
       </body>
     </html>
