@@ -1,69 +1,79 @@
-export default function SpotifyCharts() {
+export default function SpotifyChartsPage() {
   return (
-    <div className="text-white">
+    <div className="text-white space-y-12">
 
-      {/* PAGE TITLE */}
-      <h1 className="text-3xl font-bold text-center mb-8">
+      <h1 className="text-center text-4xl font-bold mb-6">
         <span className="text-red-500">Spotify</span> Charts
       </h1>
 
-      {/* DESCRIPTION */}
-      <p className="text-center text-gray-400 mb-8">
-        Daily and weekly Spotify chart positions for Jennie songs.
+      <p className="text-center text-gray-300 mb-10">
+        Daily & weekly Spotify chart positions for Jennie songs.
       </p>
 
-      {/* CHART SECTIONS */}
-      <div className="space-y-10">
 
-        {/* DAILY CHARTS */}
-        <div>
-          <h2 className="text-xl font-semibold mb-3 text-red-400">
-            🔥 Daily Global Chart (Placeholder)
-          </h2>
+      {/* -------------------- DAILY TOP SONGS -------------------- */}
+      <section>
+        <h2 className="text-2xl font-semibold mb-3">🔥 Daily Top Songs (Placeholder)</h2>
 
-          {/* List container */}
-          <div className="bg-black/40 border border-red-900/40 rounded-xl p-4 space-y-4">
-
-            {/* Chart Row - 1 */}
-            <div className="flex items-center justify-between bg-black/30 p-3 rounded-lg border border-red-900/20">
-              <div className="flex items-center gap-4">
-                <span className="text-gray-300 font-bold"># —</span>
-                <span className="text-white">Song Name</span>
-              </div>
-
-              <div className="text-right text-gray-400">
-                <p>Streams —</p>
-                <p className="text-sm text-gray-500">Movement —</p>
-              </div>
-            </div>
-
-            {/* More rows will auto-generate later */}
+        <div className="border border-red-800 rounded-xl p-4 bg-black/40">
+          <div className="flex justify-between border-b border-red-900 pb-2 mb-3 text-gray-300">
+            <span># — Song Name</span>
+            <span>Streams — Movement</span>
           </div>
+          <p className="text-gray-500">Daily top songs will load here...</p>
         </div>
+      </section>
 
-        {/* WEEKLY CHARTS */}
-        <div>
-          <h2 className="text-xl font-semibold mb-3 text-red-400">
-            📅 Weekly Global Chart (Placeholder)
-          </h2>
 
-          <div className="bg-black/40 border border-red-900/40 rounded-xl p-4">
-            <p className="text-gray-400">Weekly chart data will load here...</p>
-          </div>
+      {/* -------------------- DAILY TOP ARTISTS -------------------- */}
+      <section>
+        <h2 className="text-2xl font-semibold mb-3">🎤 Daily Top Artists (Placeholder)</h2>
+
+        <div className="border border-red-800 rounded-xl p-4 bg-black/40">
+          <p className="text-gray-500">Daily top artists will load here...</p>
         </div>
+      </section>
 
-        {/* COUNTRY CHARTS */}
-        <div>
-          <h2 className="text-xl font-semibold mb-3 text-red-400">
-            🌍 Country Charts (Placeholder)
-          </h2>
 
-          <div className="bg-black/40 border border-red-900/40 rounded-xl p-4">
-            <p className="text-gray-400">Country-specific stats coming soon...</p>
-          </div>
+      {/* -------------------- DAILY VIRAL SONGS -------------------- */}
+      <section>
+        <h2 className="text-2xl font-semibold mb-3">🔥 Daily Viral Songs (Placeholder)</h2>
+
+        <div className="border border-red-800 rounded-xl p-4 bg-black/40">
+          <p className="text-gray-500">Daily viral songs will load here...</p>
         </div>
+      </section>
 
-      </div>
+
+      {/* -------------------- WEEKLY TOP SONGS -------------------- */}
+      <section>
+        <h2 className="text-2xl font-semibold mb-3">📅 Weekly Top Songs (Placeholder)</h2>
+
+        <div className="border border-red-800 rounded-xl p-4 bg-black/40">
+          <p className="text-gray-500">Weekly top songs will load here...</p>
+        </div>
+      </section>
+
+
+      {/* -------------------- WEEKLY TOP ALBUMS -------------------- */}
+      <section>
+        <h2 className="text-2xl font-semibold mb-3">💿 Weekly Top Albums (Placeholder)</h2>
+
+        <div className="border border-red-800 rounded-xl p-4 bg-black/40">
+          <p className="text-gray-500">Weekly top albums will load here...</p>
+        </div>
+      </section>
+
+
+      {/* -------------------- COUNTRY CHARTS -------------------- */}
+      <section>
+        <h2 className="text-2xl font-semibold mb-3">🌍 Country Charts (Placeholder)</h2>
+
+        <div className="border border-red-800 rounded-xl p-4 bg-black/40">
+          <p className="text-gray-500">Country chart data will load here...</p>
+        </div>
+      </section>
+
     </div>
   );
 }
