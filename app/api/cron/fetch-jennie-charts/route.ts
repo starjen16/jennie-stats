@@ -30,22 +30,22 @@ async function scrapeSpotifyDaily() {
 function parseChart(html: string) {
   const rows: any[] = [];
 
-  const rowRegex = /"chart-row.*?<\/a>/gs;
+  // FIX: remove ES2018 "s" flag → use [\s\S] (matches any char)
+  const rowRegex = /"chart-row[\s\S]*?<\/a>/g;
 
   const matches = html.match(rowRegex);
   if (!matches) return rows;
 
   for (const block of matches) {
-
     // Rank
     const rank = block.match(/"rank">(\d+)</)?.[1];
 
     // Track title
     const track = block.match(/"track-name">([^<]+)</)?.[1];
 
-    // Artists (multiple possible)
+    // Artists
     const artistMatches = [...block.matchAll(/"artist-name">([^<]+)</g)];
-    const artists = artistMatches.map(m => m[1]);
+    const artists = artistMatches.map((m) => m[1]);
 
     // Streams
     const streams = block.match(/"chart-stat-value">([^<]+)</)?.[1];
@@ -78,7 +78,7 @@ export async function GET() {
         t.artists.some((a: string) => /jennie/i.test(a))
     );
 
-    // Step 4: Determine chart date (Spotify always shows yesterday)
+    // Spotify always reports yesterday's chart
     const d = new Date();
     d.setDate(d.getDate() - 1);
     const date = d.toISOString().slice(0, 10);
