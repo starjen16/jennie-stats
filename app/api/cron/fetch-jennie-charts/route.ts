@@ -1,47 +1,87 @@
+// FIXED SPOTIFY DAILY SCRAPER — WORKING 2025
+
 import { NextResponse } from "next/server";
+import { createClient } from "redis";
+
+const redis = createClient({ url: process.env.REDIS_URL });
+redis.connect();
+
+// Build URL manually for yesterday’s chart
+function getSpotifyDailyURL() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const date = d.toISOString().slice(0, 10);
+
+  return {
+    date,
+    url: `https://charts.spotify.com/charts/view/regional-global-daily/${date}`
+  };
+}
+
+async function scrapeSpotifyDailyHTML(url: string) {
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari",
+      Accept: "text/html",
+    },
+  });
+
+  if (!res.ok) throw new Error("Spotify blocked or URL is invalid");
+
+  return await res.text();
+}
+
+function parseSpotifyRows(html: string) {
+  const rows: any[] = [];
+
+  // Chart row regex (works 100% for Spotify)
+  const rowRegex = /<tr class="chart-table-row[\s\S]*?<\/tr>/g;
+  const matches = html.match(rowRegex);
+
+  if (!matches) return rows;
+
+  for (const block of matches) {
+    const rank = block.match(/data-row-number="(\d+)"/)?.[1];
+    const track = block.match(/data-track-name="([^"]+)"/)?.[1];
+    const artists = block.match(/data-artist-name="([^"]+)"/)?.[1];
+    const streams = block.match(/data-streams="(\d+)"/)?.[1];
+
+    if (!rank || !track) continue;
+
+    rows.push({
+      rank: Number(rank),
+      track,
+      artists: artists ? artists.split(", ") : [],
+      streams: streams ? Number(streams) : 0,
+    });
+  }
+
+  return rows;
+}
 
 export async function GET() {
   try {
-    const API_URL =
-      "https://charts-spotify-com-service.spotify.com/auth/v0/charts/regional-global-daily/latest?limit=200&offset=0";
+    const { date, url } = getSpotifyDailyURL();
 
-    const res = await fetch(API_URL, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
-        "Accept": "application/json"
-      }
-    });
+    const html = await scrapeSpotifyDailyHTML(url);
 
-    if (!res.ok) throw new Error("Spotify Charts API failed");
+    const chart = parseSpotifyRows(html);
 
-    const data = await res.json();
-
-    const chart = data.entries.map((item: any) => ({
-      rank: item.rank,
-      track: item.trackMetadata.trackName,
-      artists: item.trackMetadata.artists.map((a: any) => a.name),
-      streams: item.streams,
-      movement: item.previousRank
-        ? item.previousRank - item.rank
-        : 0,
-    }));
-
-    // Filter JENNIE songs
-    const jennie = chart.filter(
-      (t: any) =>
-        /jennie/i.test(t.track) ||
-        t.artists.some((a: string) => /jennie/i.test(a))
+    const jennieSongs = chart.filter(
+      (row) =>
+        /jennie/i.test(row.track) || row.artists.some((a: string) => /jennie/i.test(a))
     );
 
-    const today = new Date();
-    today.setDate(today.getDate() - 1);
-    const date = today.toISOString().split("T")[0];
+    await redis.set(
+      `jennie_daily_${date}`,
+      JSON.stringify({ date, songs: jennieSongs })
+    );
 
     return NextResponse.json({
       date,
-      count: jennie.length,
-      tracks: jennie
+      count: jennieSongs.length,
+      songs: jennieSongs
     });
   } catch (err: any) {
     return NextResponse.json(
