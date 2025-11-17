@@ -5,10 +5,7 @@ const redis = createClient({
   url: process.env.REDIS_URL,
 });
 
-// Avoid duplicate connection in Vercel serverless
-if (!redis.isOpen) {
-  redis.connect();
-}
+if (!redis.isOpen) redis.connect();
 
 type TrackRow = {
   position: number;
@@ -18,20 +15,16 @@ type TrackRow = {
   url?: string;
 };
 
-// ------------------------------
-// Parse Spotify CSV file
-// ------------------------------
+// -------- Parse CSV (Spotify style) --------
 async function fetchCSV(url: string): Promise<TrackRow[]> {
   const res = await fetch(url);
   const text = await res.text();
-  const lines = text.trim().split("\n");
 
+  const lines = text.trim().split("\n");
   const rows: TrackRow[] = [];
 
-  // Skip header — start at index 1
   for (let i = 1; i < lines.length; i++) {
     const parts = lines[i]
-      // Handle quoted CSV rows correctly
       .split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/)
       .map((x) => x.replace(/^"|"$/g, ""));
 
@@ -49,96 +42,78 @@ async function fetchCSV(url: string): Promise<TrackRow[]> {
   return rows;
 }
 
+// ------- CLEAN JENNIE MATCH FUNCTION --------
+function isJennieTrack(track: string, artist: string): boolean {
+  const t = track.toLowerCase();
+  const a = artist.toLowerCase();
+
+  return (
+    t.includes("jennie") ||
+    a.includes("jennie") ||
+    t.includes("(with jennie") ||
+    a.includes("the weeknd") && t.includes("girls") && t.includes("jennie")
+  );
+}
+
 export async function GET() {
   try {
-    // -------------------------------------------------------
-    // 1) Spotify "latest" = YESTERDAY'S chart, not today!
-    // -------------------------------------------------------
-    const chartDate = new Date();
-    chartDate.setDate(chartDate.getDate() - 1);
+    // Spotify publishes *yesterday’s chart*
+    const now = new Date();
+    now.setDate(now.getDate() - 1);
+    const chartDate = now.toISOString().slice(0, 10);
 
-    const chartKey = chartDate.toISOString().slice(0, 10); // YYYY-MM-DD
+    const csvTodayUrl = `https://spotifycharts.com/regional/global/daily/${chartDate}/download`;
+    const todayRows = await fetchCSV(csvTodayUrl);
 
-    const todayCsv = `https://spotifycharts.com/regional/global/daily/${chartKey}/download`;
-
-    // Fetch current chart data
-    const todayRows = await fetchCSV(todayCsv);
-
-    // -------------------------------------------------------
-    // 2) Fetch PREVIOUS day for movement comparison
-    // -------------------------------------------------------
-    const prevDateObj = new Date(chartDate);
-    prevDateObj.setDate(prevDateObj.getDate() - 1);
-    const prevDate = prevDateObj.toISOString().slice(0, 10);
+    // ------- Load Previous Day -------
+    const prev = new Date(now);
+    prev.setDate(prev.getDate() - 1);
+    const prevDate = prev.toISOString().slice(0, 10);
 
     let prevRows: TrackRow[] = [];
     try {
       prevRows = await fetchCSV(
         `https://spotifycharts.com/regional/global/daily/${prevDate}/download`
       );
-    } catch {
-      prevRows = [];
-    }
+    } catch {}
 
     const prevMap = new Map<string, TrackRow>();
-    prevRows.forEach((r) => {
-      prevMap.set(`${r.track}-${r.artist}`, r);
-    });
+    prevRows.forEach((r) =>
+      prevMap.set(`${r.track.toLowerCase()}_${r.artist.toLowerCase()}`, r)
+    );
 
-    // -------------------------------------------------------
-    // 3) Correct Jennie detection
-    // -------------------------------------------------------
+    // -------- Filter Jennie songs --------
     const jennieTracks = todayRows
-      .filter((t) => {
-        const artist = t.artist.toLowerCase();
-        const track = t.track.toLowerCase();
-
-        // Jennie solo OR featured
-        const isJennieArtist = artist.includes("jennie");
-        const isJennieTrack = track.includes("jennie");
-
-        return isJennieArtist || isJennieTrack;
-      })
+      .filter((r) => isJennieTrack(r.track, r.artist))
       .map((t) => {
-        const key = `${t.track}-${t.artist}`;
+        const key = `${t.track.toLowerCase()}_${t.artist.toLowerCase()}`;
         const prev = prevMap.get(key);
 
         return {
-          position: t.position,
-          track: t.track,
-          artist: t.artist,
-          streams: t.streams,
-          url: t.url,
-
-          // Movement: previous position - today's position
+          ...t,
           movement: prev ? prev.position - t.position : null,
-
-          // Stream change
           streamsChange: prev ? t.streams - prev.streams : null,
         };
       });
 
-    // -------------------------------------------------------
-    // 4) Save chart under correct Spotify date
-    // -------------------------------------------------------
+    // ---------- SAVE TO REDIS ----------
+    const redisKey = `jennie_global_${chartDate}`;
+
     await redis.set(
-      `jennie_global_${chartKey}`,
+      redisKey,
       JSON.stringify({
-        date: chartKey,
+        date: chartDate,
         tracks: jennieTracks,
       })
     );
 
     return NextResponse.json({
       success: true,
-      saved: `jennie_global_${chartKey}`,
+      saved: redisKey,
+      chart_date: chartDate,
       count: jennieTracks.length,
-      chart_date: chartKey,
     });
   } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Unknown error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
