@@ -1,8 +1,10 @@
-export default function SpotifyPage() {
+export default function SpotifyOverview() {
   return (
-    <div className="text-white text-center mt-20">
-      <h1 className="text-3xl font-bold">Spotify Stats</h1>
-      <p className="mt-4">Jennie Spotify streaming stats will appear here.</p>
+    <div className="text-center">
+      <h1 className="text-3xl font-bold mb-4 text-red-400">Spotify Overview</h1>
+      <p className="text-gray-300">
+        Jennie’s Spotify stats overview will appear here.
+      </p>
     </div>
   );
 }

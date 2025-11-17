@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import Link from "next/link";   // ✅ IMPORTANT
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Jennie Stats",
@@ -21,8 +21,43 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             {/* NAVIGATION */}
             <nav className="flex gap-6 text-sm">
+
               <Link href="/" className="hover:text-red-400">Home</Link>
-              <Link href="/spotify" className="hover:text-red-400">Spotify</Link>
+
+              {/* ⭐ SPOTIFY DROPDOWN ⭐ */}
+              <div className="relative group">
+                <button className="hover:text-red-400 transition flex items-center gap-1">
+                  Spotify ▾
+                </button>
+
+                <div className="
+                  absolute hidden group-hover:block
+                  bg-black/90 border border-red-700/40
+                  rounded-xl shadow-xl p-3 w-44 mt-2 z-50
+                ">
+                  <Link href="/spotify" className="block px-2 py-1 rounded hover:bg-red-600/20">
+                    Overview
+                  </Link>
+
+                  <Link href="/spotify/charts" className="block px-2 py-1 rounded hover:bg-red-600/20">
+                    Charts
+                  </Link>
+
+                  <Link href="/spotify/tracks" className="block px-2 py-1 rounded hover:bg-red-600/20">
+                    Track Streams
+                  </Link>
+
+                  <Link href="/spotify/albums" className="block px-2 py-1 rounded hover:bg-red-600/20">
+                    Album Streams
+                  </Link>
+
+                  <Link href="/spotify/artist" className="block px-2 py-1 rounded hover:bg-red-600/20">
+                    Jennie Artist Stats
+                  </Link>
+                </div>
+              </div>
+
+              {/* OTHER MENUS */}
               <Link href="/youtube" className="hover:text-red-400">YouTube</Link>
               <Link href="/apple" className="hover:text-red-400">Apple Music</Link>
               <Link href="/discography" className="hover:text-red-400">Discography</Link>
