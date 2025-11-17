@@ -2,83 +2,66 @@ import { NextResponse } from "next/server";
 import { createClient } from "redis";
 
 const redis = createClient({
-  url: process.env.REDIS_URL
+  url: process.env.REDIS_URL,
 });
-
 redis.connect();
 
-type TrackRow = {
-  position: number;
-  track: string;
-  artist: string;
-  streams: number;
-};
+// GET Spotify Charts API JSON
+async function getSpotifyCharts(date: string) {
+  const url =
+    `https://charts-spotify-com-service.spotify.com/auth/v0/charts?` +
+    `type=regional&country=global&date=${date}&limit=200`;
 
-function clean(value: string) {
-  return value.replace(/^"|"$/g, "");
-}
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      "Accept": "application/json",
+    },
+    cache: "no-store",
+  });
 
-async function fetchCSV(url: string): Promise<TrackRow[]> {
-  const res = await fetch(url);
-  const text = await res.text();
+  if (!res.ok) throw new Error("Spotify API error");
 
-  const lines = text.trim().split("\n");
-  const rows: TrackRow[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i]
-      .split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/)
-      .map(clean);
-
-    if (cols.length < 4) continue;
-
-    rows.push({
-      position: Number(cols[0]),
-      track: cols[1],
-      artist: cols[2],
-      streams: Number(cols[3].replace(/,/g, "")),
-    });
-  }
-
-  return rows;
+  return res.json();
 }
 
 export async function GET() {
   try {
-    // TODAY = actually shows yesterday's chart
-    const todayCsv =
-      "https://spotifycharts.com/top-songs/global/daily/latest/download";
-
-    const todayRows = await fetchCSV(todayCsv);
-
-    // build YYYY-MM-DD for key name (yesterday)
+    // Spotify charts = yesterday
     const d = new Date();
     d.setDate(d.getDate() - 1);
-    const chartDate = d.toISOString().slice(0, 10);
+    const date = d.toISOString().slice(0, 10);
 
-    // FILTER ONLY JENNIE SONGS
-    const jennie = todayRows.filter(
-      (t) =>
-        /jennie/i.test(t.track) ||
-        /jennie/i.test(t.artist)
+    // Fetch global chart
+    const data = await getSpotifyCharts(date);
+    const entries = data.entries || [];
+
+    // Filter Jennie tracks
+    const jennie = entries.filter((e: any) =>
+      /jennie/i.test(e.track_name) ||
+      e.artist_names.some((a: string) => /jennie/i.test(a))
     );
 
-    // SAVE to Redis
+    // Save in Redis
     await redis.set(
-      `jennie_global_${chartDate}`,
+      `jennie_global_${date}`,
       JSON.stringify({
-        date: chartDate,
+        date,
         tracks: jennie,
       })
     );
 
     return NextResponse.json({
       success: true,
-      saved: `jennie_global_${chartDate}`,
+      saved: `jennie_global_${date}`,
       count: jennie.length,
-      chart_date: chartDate,
+      date,
     });
+
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json(
+      { error: err.message },
+      { status: 500 }
+    );
   }
 }
