@@ -2,20 +2,22 @@ import { NextResponse } from "next/server";
 import { createClient } from "redis";
 
 const redis = createClient({
-  url: process.env.REDIS_URL,
+  url: process.env.REDIS_URL
 });
 
-if (!redis.isOpen) redis.connect();
+redis.connect();
 
 type TrackRow = {
   position: number;
   track: string;
   artist: string;
   streams: number;
-  url?: string;
 };
 
-// -------- Parse CSV (Spotify style) --------
+function clean(value: string) {
+  return value.replace(/^"|"$/g, "");
+}
+
 async function fetchCSV(url: string): Promise<TrackRow[]> {
   const res = await fetch(url);
   const text = await res.text();
@@ -24,94 +26,57 @@ async function fetchCSV(url: string): Promise<TrackRow[]> {
   const rows: TrackRow[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const parts = lines[i]
+    const cols = lines[i]
       .split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/)
-      .map((x) => x.replace(/^"|"$/g, ""));
+      .map(clean);
 
-    if (parts.length < 4) continue;
+    if (cols.length < 4) continue;
 
     rows.push({
-      position: Number(parts[0]),
-      track: parts[1],
-      artist: parts[2],
-      streams: Number(parts[3].replace(/,/g, "")),
-      url: parts[4],
+      position: Number(cols[0]),
+      track: cols[1],
+      artist: cols[2],
+      streams: Number(cols[3].replace(/,/g, "")),
     });
   }
 
   return rows;
 }
 
-// ------- CLEAN JENNIE MATCH FUNCTION --------
-function isJennieTrack(track: string, artist: string): boolean {
-  const t = track.toLowerCase();
-  const a = artist.toLowerCase();
-
-  return (
-    t.includes("jennie") ||
-    a.includes("jennie") ||
-    t.includes("(with jennie") ||
-    a.includes("the weeknd") && t.includes("girls") && t.includes("jennie")
-  );
-}
-
 export async function GET() {
   try {
-    // Spotify publishes *yesterday’s chart*
-    const now = new Date();
-    now.setDate(now.getDate() - 1);
-    const chartDate = now.toISOString().slice(0, 10);
+    // TODAY = actually shows yesterday's chart
+    const todayCsv =
+      "https://spotifycharts.com/top-songs/global/daily/latest/download";
 
-    const csvTodayUrl = `https://spotifycharts.com/regional/global/daily/${chartDate}/download`;
-    const todayRows = await fetchCSV(csvTodayUrl);
+    const todayRows = await fetchCSV(todayCsv);
 
-    // ------- Load Previous Day -------
-    const prev = new Date(now);
-    prev.setDate(prev.getDate() - 1);
-    const prevDate = prev.toISOString().slice(0, 10);
+    // build YYYY-MM-DD for key name (yesterday)
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const chartDate = d.toISOString().slice(0, 10);
 
-    let prevRows: TrackRow[] = [];
-    try {
-      prevRows = await fetchCSV(
-        `https://spotifycharts.com/regional/global/daily/${prevDate}/download`
-      );
-    } catch {}
-
-    const prevMap = new Map<string, TrackRow>();
-    prevRows.forEach((r) =>
-      prevMap.set(`${r.track.toLowerCase()}_${r.artist.toLowerCase()}`, r)
+    // FILTER ONLY JENNIE SONGS
+    const jennie = todayRows.filter(
+      (t) =>
+        /jennie/i.test(t.track) ||
+        /jennie/i.test(t.artist)
     );
 
-    // -------- Filter Jennie songs --------
-    const jennieTracks = todayRows
-      .filter((r) => isJennieTrack(r.track, r.artist))
-      .map((t) => {
-        const key = `${t.track.toLowerCase()}_${t.artist.toLowerCase()}`;
-        const prev = prevMap.get(key);
-
-        return {
-          ...t,
-          movement: prev ? prev.position - t.position : null,
-          streamsChange: prev ? t.streams - prev.streams : null,
-        };
-      });
-
-    // ---------- SAVE TO REDIS ----------
-    const redisKey = `jennie_global_${chartDate}`;
-
+    // SAVE to Redis
     await redis.set(
-      redisKey,
+      `jennie_global_${chartDate}`,
       JSON.stringify({
         date: chartDate,
-        tracks: jennieTracks,
+        tracks: jennie,
       })
     );
 
     return NextResponse.json({
       success: true,
-      saved: redisKey,
+      saved: `jennie_global_${chartDate}`,
+      count: jennie.length,
       chart_date: chartDate,
-      count: jennieTracks.length,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
