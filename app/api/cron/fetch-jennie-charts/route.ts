@@ -1,69 +1,105 @@
 import { NextResponse } from "next/server";
 import { createClient } from "redis";
 
+// Connect Redis
 const redis = createClient({
   url: process.env.REDIS_URL,
 });
 redis.connect();
 
-// fetch Spotify public JSON
-async function fetchSpotifyChart(date: string) {
-  const url = `https://charts-spotify-com-service.spotify.com/charts/v2/regions/global/daily/${date}?limit=200&offset=0`;
+// Scrape HTML from Spotify Charts
+async function scrapeSpotifyDaily() {
+  const url = "https://charts.spotify.com/charts/view/regional-global-daily/latest";
 
   const res = await fetch(url, {
     method: "GET",
     headers: {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "Accept": "application/json",
-      "Origin": "https://charts.spotify.com",
-      "Referer": "https://charts.spotify.com/",
       "Accept-Language": "en-US,en;q=0.9",
+      "Accept": "text/html",
     },
   });
 
-  if (!res.ok) {
-    throw new Error(`Spotify API error ${res.status}`);
+  if (!res.ok) throw new Error("Failed to scrape Spotify Charts");
+
+  return await res.text();
+}
+
+// Extract chart rows from HTML
+function parseChart(html: string) {
+  const rows: any[] = [];
+
+  const rowRegex = /"chart-row.*?<\/a>/gs;
+
+  const matches = html.match(rowRegex);
+  if (!matches) return rows;
+
+  for (const block of matches) {
+
+    // Rank
+    const rank = block.match(/"rank">(\d+)</)?.[1];
+
+    // Track title
+    const track = block.match(/"track-name">([^<]+)</)?.[1];
+
+    // Artists (multiple possible)
+    const artistMatches = [...block.matchAll(/"artist-name">([^<]+)</g)];
+    const artists = artistMatches.map(m => m[1]);
+
+    // Streams
+    const streams = block.match(/"chart-stat-value">([^<]+)</)?.[1];
+
+    if (!rank || !track) continue;
+
+    rows.push({
+      rank: Number(rank),
+      track,
+      artists,
+      streams: streams ? Number(streams.replace(/,/g, "")) : 0,
+    });
   }
 
-  return res.json();
+  return rows;
 }
 
 export async function GET() {
   try {
-    // Spotify charts always reflect yesterday
+    // Step 1: Scrape HTML
+    const html = await scrapeSpotifyDaily();
+
+    // Step 2: Parse chart rows
+    const chart = parseChart(html);
+
+    // Step 3: Filter for Jennie
+    const jennie = chart.filter(
+      (t) =>
+        /jennie/i.test(t.track) ||
+        t.artists.some((a: string) => /jennie/i.test(a))
+    );
+
+    // Step 4: Determine chart date (Spotify always shows yesterday)
     const d = new Date();
     d.setDate(d.getDate() - 1);
     const date = d.toISOString().slice(0, 10);
 
-    const data = await fetchSpotifyChart(date);
-
-    const entries = data?.entries ?? [];
-
-    // Filter Jennie tracks
-    const jennie = entries.filter((e: any) => {
-      const nameMatch = /jennie/i.test(e.track?.name);
-      const artistMatch = e.track?.artists?.some((a: any) =>
-        /jennie/i.test(a.name)
-      );
-      return nameMatch || artistMatch;
-    });
-
+    // Step 5: Save to Redis
     await redis.set(
       `jennie_global_${date}`,
-      JSON.stringify({ date, tracks: jennie })
+      JSON.stringify({
+        date,
+        tracks: jennie,
+      })
     );
 
     return NextResponse.json({
       success: true,
-      date,
       saved: `jennie_global_${date}`,
       count: jennie.length,
+      date,
+      tracks: jennie,
     });
   } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
