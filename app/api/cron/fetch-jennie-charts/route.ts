@@ -1,106 +1,63 @@
-import { NextResponse } from "next/server";
-import { createClient } from "redis";
+// app/api/cron/fetch-jennie-charts/route.ts
+// This route is the target of your Vercel Cron Job.
+import { NextResponse } from 'next/server';
+import { promises as fs } from 'fs';
+import path from 'path';
 
-// -----------------------------
-// Connect Redis
-// -----------------------------
-const redis = createClient({
-  url: process.env.REDIS_URL,
-});
-redis.connect();
+// IMPORTANT: Force this route to be dynamic for Cron jobs to execute reliably
+export const dynamic = 'force-dynamic'; 
 
-// -----------------------------
-// Utility: Spotify uses yesterday's date
-// -----------------------------
-function getSpotifyDate() {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
+// Path to the cache file (root of the project: process.cwd())
+const dataFilePath = path.join(process.cwd(), 'data/jennie_charts_cache.json');
+
+/**
+ * Replace this with your actual KWORB scraper logic.
+ * It should return an array of processed stats objects.
+ */
+async function runScraper() {
+    console.log("Starting KWORB Scraper...");
+    
+    // --- START: YOUR REAL SCRAPING CODE GOES HERE ---
+    // Example placeholder data:
+    const newStats = [
+        { source: "Spotify Global", rank: 1, song: "SOLO", streams: "1.24 Billion" },
+        { source: "YouTube MV", rank: 3, song: "SOLO", views: "905 Million" },
+        { source: "Apple Music", rank: 1, song: "You & Me", streams: "201 Million" },
+    ];
+    // --- END: YOUR REAL SCRAPING CODE GOES HERE ---
+
+    return newStats;
 }
 
-// -----------------------------
-// Fetch Spotify API Data
-// -----------------------------
-async function fetchSpotifyAPI(date: string) {
-  const apiUrl = `https://charts.spotify.com/api/charts/v2/sections/region:global/daily/${date}?limit=200&offset=0`;
+export async function GET() {
+    try {
+        // 1. Run the scraper to get fresh data
+        const freshStats = await runScraper();
+        const newTimestamp = new Date().toISOString();
 
-  const res = await fetch(apiUrl, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome",
-      Accept: "application/json",
-    },
-  });
+        const updatedData = {
+            timestamp: newTimestamp,
+            stats: freshStats
+        };
 
-  if (!res.ok) throw new Error("Spotify API error");
+        // 2. Write the fresh data to the local JSON cache file
+        await fs.writeFile(dataFilePath, JSON.stringify(updatedData, null, 2));
 
-  return await res.json();
-}
+        console.log(`Cron job completed. Cache updated at: ${newTimestamp}`);
 
-// -----------------------------
-// CRON SECURE ENDPOINT
-// -----------------------------
-export async function GET(req: Request) {
-  try {
-    // -------------------------------------
-    // 1. Validate Cron Secret
-    // -------------------------------------
-    const auth = req.headers.get("Authorization");
-    const expected = `Bearer ${process.env.CRON_SECRET}`;
+        // 3. Optional: Revalidate the public API route cache (more advanced technique)
+        // If you were using fetch with tags on the public route, you would revalidate here.
 
-    if (auth !== expected) {
-      return NextResponse.json(
-        { error: "Unauthorized: Invalid CRON_SECRET" },
-        { status: 401 }
-      );
+        return NextResponse.json({ 
+            success: true, 
+            message: "Charts cache updated successfully.",
+            timestamp: newTimestamp
+        });
+    } catch (error) {
+        console.error("Cron job failed:", error);
+        return NextResponse.json(
+            { success: false, message: "Cron job failed to update cache." },
+            { status: 500 }
+        );
     }
-
-    // -------------------------------------
-    // 2. Get correct Spotify date (yesterday)
-    // -------------------------------------
-    const date = getSpotifyDate();
-
-    // -------------------------------------
-    // 3. Fetch daily Spotify global chart
-    // -------------------------------------
-    const json = await fetchSpotifyAPI(date);
-    const entries = json?.entries ?? [];
-
-    // -------------------------------------
-    // 4. Filter Jennie tracks
-    // -------------------------------------
-    const jennie = entries.filter(
-      (e: any) =>
-        /jennie/i.test(e.trackName) ||
-        e.artistNames?.some((a: string) => /jennie/i.test(a))
-    );
-
-    // -------------------------------------
-    // 5. Save to Redis
-    // -------------------------------------
-    await redis.set(
-      `jennie_global_${date}`,
-      JSON.stringify({
-        date,
-        count: jennie.length,
-        songs: jennie,
-      })
-    );
-
-    // -------------------------------------
-    // 6. Return success response
-    // -------------------------------------
-    return NextResponse.json({
-      ok: true,
-      savedKey: `jennie_global_${date}`,
-      date,
-      count: jennie.length,
-      songs: jennie,
-    });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Internal Server Error" },
-      { status: 500 }
-    );
-  }
 }
