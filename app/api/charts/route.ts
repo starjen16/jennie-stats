@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-// FIX: Force the route to run dynamically and not cache (The line you added)
+// FIX: Force the route to run dynamically and not cache 
 export const dynamic = 'force-dynamic'; 
 
 const CACHE_FILE_NAME = 'jennie_charts_cache.json';
