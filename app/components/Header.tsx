@@ -4,28 +4,39 @@ import Link from "next/link";
 import { useState } from "react";
 
 export default function Header() {
-  const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [spotifyOpen, setSpotifyOpen] = useState(false);
 
   return (
-    <header className="w-full border-b border-red-900 bg-black text-white">
-      <div className="max-w-7xl mx-auto flex justify-between items-center px-4 py-3">
-
+    <header className="w-full bg-black border-b border-red-900 text-white">
+      <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        
+        {/* Logo */}
         <Link href="/" className="text-2xl font-bold">
           <span className="text-red-500">JENNIE</span> STATS
         </Link>
 
+        {/* Mobile Menu Button */}
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="md:hidden text-white text-3xl"
+        >
+          ☰
+        </button>
+
         {/* Desktop Menu */}
-        <nav className="hidden md:flex space-x-6">
+        <nav className="hidden md:flex items-center gap-6 text-sm">
           <Link href="/">Home</Link>
 
           <div className="relative group">
-            <button className="flex items-center">
-              Spotify ▼
+            <button className="flex items-center gap-1">
+              Spotify ▾
             </button>
-            <div className="absolute hidden group-hover:block bg-black border border-red-900 mt-2 w-40">
-              <Link href="/spotify/tracks" className="block px-4 py-2 hover:bg-red-900/30">Tracks</Link>
-              <Link href="/spotify/albums" className="block px-4 py-2 hover:bg-red-900/30">Albums</Link>
-              <Link href="/spotify/artist" className="block px-4 py-2 hover:bg-red-900/30">Artist</Link>
+
+            <div className="absolute hidden group-hover:block bg-black border border-red-900 p-3 mt-2">
+              <Link className="block py-1" href="/spotify/tracks">Tracks</Link>
+              <Link className="block py-1" href="/spotify/albums">Albums</Link>
+              <Link className="block py-1" href="/spotify/artist">Artist</Link>
             </div>
           </div>
 
@@ -33,28 +44,31 @@ export default function Header() {
           <Link href="/apple">Apple Music</Link>
           <Link href="/discography">Discography</Link>
           <Link href="/milestones">Milestones</Link>
-        </nav>
 
-        {/* Mobile Menu Button */}
-        <button
-          className="md:hidden"
-          onClick={() => setOpen(!open)}
-        >
-          ☰
-        </button>
+        </nav>
       </div>
 
-      {/* Mobile Menu Drawer */}
-      {open && (
-        <div className="md:hidden bg-black border-t border-red-900">
-          <Link href="/" className="block px-4 py-2">Home</Link>
-          <Link href="/spotify/tracks" className="block px-4 py-2">Spotify – Tracks</Link>
-          <Link href="/spotify/albums" className="block px-4 py-2">Spotify – Albums</Link>
-          <Link href="/spotify/artist" className="block px-4 py-2">Spotify – Artist</Link>
-          <Link href="/youtube" className="block px-4 py-2">YouTube</Link>
-          <Link href="/apple" className="block px-4 py-2">Apple Music</Link>
-          <Link href="/discography" className="block px-4 py-2">Discography</Link>
-          <Link href="/milestones" className="block px-4 py-2">Milestones</Link>
+      {/* Mobile Dropdown */}
+      {menuOpen && (
+        <div className="md:hidden bg-black border-t border-red-900 p-4 text-lg">
+          <Link className="block py-2" href="/">Home</Link>
+
+          <button className="block py-2" onClick={() => setSpotifyOpen(!spotifyOpen)}>
+            Spotify ▾
+          </button>
+
+          {spotifyOpen && (
+            <div className="ml-4">
+              <Link className="block py-1" href="/spotify/tracks">Tracks</Link>
+              <Link className="block py-1" href="/spotify/albums">Albums</Link>
+              <Link className="block py-1" href="/spotify/artist">Artist</Link>
+            </div>
+          )}
+
+          <Link className="block py-2" href="/youtube">YouTube</Link>
+          <Link className="block py-2" href="/apple">Apple Music</Link>
+          <Link className="block py-2" href="/discography">Discography</Link>
+          <Link className="block py-2" href="/milestones">Milestones</Link>
         </div>
       )}
     </header>
