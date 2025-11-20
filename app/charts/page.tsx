@@ -1,6 +1,20 @@
 // app/charts/page.tsx
 
-// ... (imports remain the same)
+// Define the data structure you expect for rendering
+type JennieStat = {
+    source: string;
+    rank?: number;
+    song?: string;
+    streams?: string;
+    views?: string;
+    count?: string;
+};
+
+// Define the full structure returned by the API
+type ChartData = {
+    timestamp: string;
+    stats: JennieStat[];
+};
 
 export default async function ChartsPage() {
     
@@ -8,17 +22,25 @@ export default async function ChartsPage() {
     const CRON_URL = 'https://jennie-stats.vercel.app/api/cron/fetch-jennie-charts';
 
     // Helper function to fetch data
-    const fetchData = async () => {
-        const res = await fetch(API_URL, { cache: 'no-store' });
-        // --- CHANGE 3: The API now returns an OBJECT, not just an array ---
-        const finalData = await res.json(); 
-        return finalData;
+    const fetchData = async (): Promise<ChartData> => {
+        try {
+            const res = await fetch(API_URL, { cache: 'no-store', next: { revalidate: 0 } });
+            if (!res.ok) {
+                // If the API returns a server error (500), read the body to get the fallback data
+                return await res.json();
+            }
+            return await res.json();
+        } catch (e) {
+            console.error("Network or parsing error:", e);
+            // Return a guaranteed error structure if network fails
+            return { timestamp: '', stats: [{ source: "Network Error", song: "Failed to connect to API", count: "N/A" }] };
+        }
     };
 
     let finalData = await fetchData();
 
-    // Check 1: Did the API return the "Cache Read Error" fallback?
-    // We check the first element of the 'stats' array within the object.
+    // --- Self-Healing Logic (Triggers cron job if cache read fails) ---
+    // Check if the API returned the specific "Cache Read Error" fallback
     if (finalData.stats?.length > 0 && finalData.stats[0].source === "Cache Read Error") {
         console.log("Cache Read Error detected, triggering cron job...");
         
@@ -29,38 +51,55 @@ export default async function ChartsPage() {
         finalData = await fetchData();
     }
     
-    // Extract the stats array and the timestamp from the final data object
+    // Extract data for rendering
     const stats = finalData.stats || [];
     const timestamp = finalData.timestamp || '';
     
-    // --- The rest of your return logic (THE RENDER BLOCK) ---
+    // Check if we have valid stats to display (i.e., not the error message)
+    const hasValidData = stats.length > 0 && stats[0].source !== "Cache Read Error";
+
     return (
-        <main className="container mx-auto p-4">
-            <h1 className="text-3xl font-bold mb-4">Jennie Stats</h1>
+        <div className="text-center mt-20">
+            <h1 className="text-red-500 text-3xl font-bold mb-5">Global Chart Rankings & Stats</h1>
             
-            {/* --- CHANGE 4: Use the extracted timestamp --- */}
-            <p className="text-sm text-gray-500 mb-6">
+            {/* --- Display the Last Updated Time --- */}
+            <p className="text-center text-gray-500 mt-6 text-sm mb-8">
                 Data last updated: **
                 {timestamp ? new Date(timestamp).toLocaleString() : 'N/A'}
                 **
             </p>
-            
-            {/* --- CHANGE 5: Check the length of the new stats array --- */}
-            {stats.length > 0 && stats[0].source !== "Cache Read Error" ? (
-                // Your Table Component goes here, using the 'stats' array:
-                <div className="overflow-x-auto">
-                    {/* Assuming you have a component like <ChartsTable data={stats} /> */}
-                    {/* Please replace the placeholder comment below with your actual table rendering code, ensuring it uses the 'stats' variable */}
-                    <p className="text-green-500 font-semibold">SUCCESS: Table Placeholder - Data should render here!</p> 
-                    <pre>{JSON.stringify(stats, null, 2)}</pre>
+
+            {hasValidData ? (
+                // --- Display the Table with Data ---
+                <div className="overflow-x-auto bg-gray-900 rounded-lg shadow-xl p-4 mx-auto max-w-4xl">
+                    <table className="min-w-full divide-y divide-red-900">
+                        <thead className="bg-gray-800">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Source</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Song</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Value</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Rank/Type</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-black divide-y divide-red-900/50">
+                            {stats.map((stat, index) => (
+                                <tr key={index} className="hover:bg-gray-900 transition-colors">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-400">{stat.source}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-100">{stat.song || 'N/A'}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-100">{stat.streams || stat.views || stat.count || 'N/A'}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-100">{stat.rank !== undefined ? `#${stat.rank}` : 'N/A'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             ) : (
-                // This is the blank screen fallback
-                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+                // --- Display the No Data Message ---
+                <div className="bg-gray-800 border-l-4 border-red-500 text-gray-200 p-4 mx-auto max-w-md" role="alert">
                     <p className="font-bold">No statistics available right now.</p>
-                    <p>The system is recovering from a cache read error. Please try a **Hard Refresh (Ctrl/Cmd+Shift+R)** in a few seconds.</p>
+                    <p className="text-sm">The system is attempting to build the cache. Please perform a **Hard Refresh (Ctrl/Cmd+Shift+R)** in a few seconds.</p>
                 </div>
             )}
-        </main>
+        </div>
     );
 }

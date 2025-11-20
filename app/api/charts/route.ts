@@ -1,28 +1,30 @@
-// app/api/charts/route.ts
+import { NextResponse } from 'next/server';
+import { promises as fs } from 'fs';
+import path from 'path';
 
-// ... (imports remain the same)
-
+// CRUCIAL FIX: Force the route to run dynamically on every request.
 export const dynamic = 'force-dynamic'; 
 
-// ... (file path constants remain the same)
+const CACHE_FILE_NAME = 'jennie_charts_cache.json';
+const dataFilePath = path.join('/tmp', CACHE_FILE_NAME);
 
 export async function GET() {
     try {
         // 1. Read the data from the local cache file in /tmp
         const fileContents = await fs.readFile(dataFilePath, 'utf8');
-        const cachedData = JSON.parse(fileContents); // This is now { timestamp: string, stats: any[] }
+        const cachedData = JSON.parse(fileContents); 
 
-        // 2. Return the cached data (the full object)
+        // 2. Return the cached data (the full object: { timestamp, stats })
         return NextResponse.json(cachedData);
 
     } catch (error) {
         console.error("Error reading charts cache:", error);
         
-        // --- CHANGE 2: Ensure fallback matches the object structure ---
+        // Fallback placeholder data matching the object structure
         return NextResponse.json(
             { 
-                timestamp: '', // Empty timestamp for error state
-                stats: [ // The stats array contains the error object
+                timestamp: '', 
+                stats: [ 
                     { source: "Cache Read Error", song: "Please trigger /api/cron/fetch-jennie-charts", count: "N/A" }
                 ]
             }, 
