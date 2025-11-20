@@ -1,50 +1,29 @@
-"use client";
-import { useEffect, useState } from "react";
+import React from "react";
 
-export default function SpotifyChartsPage() {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+const data = [
+  { title: "SOLO", streams: 749276471, daily: 194775 },
+  { title: "Like Jennie", streams: 608757600, daily: 1400213 },
+  { title: "Mantra", streams: 450246893, daily: 582472 },
+  { title: "You & Me", streams: 314061139, daily: 163782 },
+];
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch("/api/cron/fetch-jennie-charts", {
-          cache: "no-store",
-        });
-        const json = await res.json();
-        setData(json);
-      } catch (e) {
-        console.error(e);
-      }
-      setLoading(false);
-    }
-    load();
-  }, []);
-
-  if (loading) return <p>Loading Jennie’s chart…</p>;
-  if (!data || !data.tracks || data.tracks.length === 0)
-    return <p>No Jennie songs found on today’s global chart.</p>;
-
+export default function TracksPage() {
   return (
-    <div className="text-white">
-      <h1 className="text-3xl font-bold text-red-500">
-        Jennie — Global Daily Chart
+    <div>
+      <h1 className="text-3xl font-bold text-red-500 text-center mb-8">
+        Track Streams
       </h1>
 
-      <p className="opacity-60">Updated: {data.date}</p>
-
-      <div className="mt-6 space-y-4">
-        {data.tracks.map((t: any, i: number) => (
+      <div className="space-y-4">
+        {data.map((track, index) => (
           <div
-            key={i}
-            className="border border-red-800 p-4 rounded-lg bg-black/30"
+            key={index}
+            className="border border-red-900 p-4 rounded-lg bg-black/40"
           >
-            <p className="text-xl font-semibold">
-              #{t.rank} — {t.track}
-            </p>
-            <p className="opacity-70">Artists: {t.artists.join(", ")}</p>
-            <p className="opacity-70">
-              Streams: {t.streams.toLocaleString()}
+            <h2 className="text-xl font-semibold">{track.title}</h2>
+            <p>Total Streams: {track.streams.toLocaleString()}</p>
+            <p className="text-green-400">
+              + {track.daily.toLocaleString()} today
             </p>
           </div>
         ))}
