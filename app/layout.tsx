@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import Header from "./components/Header";
+import Navbar from "./components/Navbar";
 
 export const metadata: Metadata = {
   title: "Jennie Stats",
@@ -11,8 +11,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen bg-black text-white">
-        <Header />
-        <main className="fade-in max-w-6xl mx-auto px-4 py-10">
+        <Navbar />
+        <main className="max-w-6xl mx-auto px-4 py-10">
           {children}
         </main>
       </body>
