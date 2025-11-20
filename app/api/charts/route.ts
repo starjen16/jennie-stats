@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-// FIX: Force the route to run dynamically and not cache 
+// CRUCIAL FIX: Force the route to run dynamically on every request.
 export const dynamic = 'force-dynamic'; 
 
 const CACHE_FILE_NAME = 'jennie_charts_cache.json';
@@ -11,7 +11,7 @@ const dataFilePath = path.join('/tmp', CACHE_FILE_NAME);
 
 export async function GET() {
     try {
-        // 1. Read the data from the local cache file (now in /tmp)
+        // 1. Read the data from the local cache file in /tmp
         const fileContents = await fs.readFile(dataFilePath, 'utf8');
         const cachedData = JSON.parse(fileContents);
 
@@ -20,16 +20,13 @@ export async function GET() {
 
     } catch (error) {
         console.error("Error reading charts cache:", error);
-
-        // Safely check for the error message
-        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
         
-        // Return a 500 status with an empty/default data structure to prevent page crash
+        // Fallback placeholder data
         return NextResponse.json(
             [ 
-                { source: "No Data Yet", song: "Please refresh /api/cron/fetch-jennie-charts", count: "N/A" }
+                { source: "Cache Read Error", song: "Please trigger /api/cron/fetch-jennie-charts", count: "N/A" }
             ], 
-            { status: 200 } // Return 200 so the page doesn't crash, but return a placeholder
+            { status: 500 }
         );
     }
 }
