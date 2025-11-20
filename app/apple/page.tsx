@@ -1,8 +1,12 @@
-export default function AppleMusicPage() {
+export default function TracksPage() {
   return (
-    <div className="text-white text-center mt-20">
-      <h1 className="text-3xl font-bold">Apple Music Stats</h1>
-      <p className="mt-4">Jennie Apple Music performance will show here.</p>
+    <div className="text-center">
+      <h1 className="text-3xl font-bold mb-4 text-red-500">
+        Track Streams
+      </h1>
+      <p className="text-gray-300">
+        All Jennie track streaming numbers will appear here.
+      </p>
     </div>
   );
 }
