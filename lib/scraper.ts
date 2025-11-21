@@ -33,10 +33,14 @@ async function getAccessToken(): Promise<string> {
         throw new Error("Missing Spotify credentials.");
     }
 
-    const tokenUrl = 'https://accounts.spotify.com/api/token';
-    // The Authorization header must be a Base64 encoded string of "Client ID:Client Secret"
-    const authString = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-
+    const tokenUrl = 'https://accounts.spotify.com/api/token'; // CORRECTED URL
+    
+    // ------------------------------------------------------------------
+    // CRITICAL FIX: Use .trim() to remove any hidden spaces (e.g., from Vercel paste)
+    // ------------------------------------------------------------------
+    const credentials = `${clientId.trim()}:${clientSecret.trim()}`;
+    const authString = Buffer.from(credentials).toString('base64');
+    
     try {
         const response = await axios.post(tokenUrl, 'grant_type=client_credentials', {
             headers: {
@@ -47,7 +51,7 @@ async function getAccessToken(): Promise<string> {
         return response.data.access_token;
     } catch (error) {
         // Log the exact error from Spotify if available
-        console.error("Error fetching Spotify access token:", (error as any).response?.data || error);
+        console.error("Error fetching Spotify access token:", (error as any).response?.data || (error as any).message);
         throw new Error("Failed to authenticate with Spotify API.");
     }
 }
@@ -74,7 +78,7 @@ export async function scrapeData(): Promise<ScrapedData> {
         // Spotify Artist ID for JENNIE (from BLACKPINK)
         const artistId = '250b0WlC5VkOCoUsaCY84M'; 
         // Endpoint to get the artist's 10 most popular tracks
-        const topTracksUrl = `https://api.spotify.com/v1/artists/$${artistId}/top-tracks?country=US`; 
+        const topTracksUrl = `https://api.spotify.com/v1/artists/${artistId}/top-tracks?country=US`; // CORRECTED URL
         
         // Fetch Top 10 Tracks for the artist
         const { data: topTracksResponse } = await axios.get(topTracksUrl, {
