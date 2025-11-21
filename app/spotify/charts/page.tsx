@@ -1,5 +1,5 @@
 // app/spotify/charts/page.tsx
-import { scrapeData } from '../../../api/cron/route'; // <-- FIX APPLIED HERE
+import { scrapeData } from '../../api/cron/route'; // <-- CORRECTED FIX APPLIED HERE
 
 // Define the structure for the Spotify data (from your previous work)
 interface SpotifyChartEntry {
