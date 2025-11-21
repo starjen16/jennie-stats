@@ -1,19 +1,20 @@
-import './globals.css'; 
-import Layout from './components/Layout'; // <-- ADD THIS IMPORT
+// app/layout.tsx
 
-// You can keep your existing Metadata
+import './globals.css'; 
+import Layout from './components/Layout'; 
+
+// You can keep your existing Metadata or set it up later
 
 export default function RootLayout({
   children,
 }: {
-  // Fixes the TypeScript error related to implicit 'any' type for children
+  // We specify the type of children here for TypeScript
   children: React.ReactNode 
 }) {
   return (
     <html lang="en">
-      {/* Set a default body class for consistent dark text on dark background */}
-      <body className="text-gray-100"> 
-        {/* <-- WRAP WITH THE NEW LAYOUT COMPONENT --> */}
+      {/* Note: We removed the `className` from body since `globals.css` now handles the colors. */}
+      <body> 
         <Layout>
           {children}
         </Layout>

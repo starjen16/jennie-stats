@@ -1,15 +1,15 @@
+// app/components/Layout.tsx
+
 import Sidebar from './Sidebar';
 
-// Important: Define the type for 'children' to prevent TypeScript errors.
 interface LayoutProps {
     children: React.ReactNode;
 }
 
 export default function Layout({ children }: LayoutProps) {
     return (
-        // Set the primary dark background for the entire page
-        <div className="min-h-screen bg-gray-900">
-            {/* The Sidebar is fixed on the left */}
+        // Changed bg-gray-900 to bg-black
+        <div className="min-h-screen bg-black">
             <Sidebar />
             
             {/* Main content area shifts to the right by the width of the sidebar (w-64 = ml-64) */}
