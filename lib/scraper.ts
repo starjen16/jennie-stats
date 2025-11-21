@@ -1,7 +1,7 @@
 import * as cheerio from 'cheerio';
 import axios from 'axios';
 
-// Interfaces for the raw scraped data
+// Interfaces for the raw scraped data (keeping for reference, but not strictly used in final structure)
 type JennieStat = {
     source: string;
     rank?: number;
@@ -32,27 +32,73 @@ interface ScrapedData {
 
 // RENAME: Renamed from scrapeKWORBStats to scrapeData, and returns ScrapedData
 export async function scrapeData(): Promise<ScrapedData> {
-    // Placeholder URL for kworb scraping (needs to be implemented)
     const kworbUrl = "https://kworb.net/spotify/artist/250b0WlC5VkOCoUsaCY84M_songs.html";
-    
-    // --- START: Implement your actual scraping logic here ---
+    const spotifyData: SpotifyChartEntry[] = [];
+    let lastUpdatedDate = new Date().toLocaleString();
 
-    // The logic below is a placeholder that returns the exact data structure 
-    // expected by app/spotify/charts/page.tsx (the ScrapedData interface).
+    try {
+        // 1. Fetch the HTML content
+        const { data } = await axios.get(kworbUrl);
+        const $ = cheerio.load(data);
 
-    // This section is for a test return:
-    const mockDate = new Date().toLocaleString();
-    
-    return {
-        spotify: [
-            { rank: 1, title: 'SOLO', artist: 'Jennie', streams: '1,234,567', date: mockDate },
-            { rank: 2, title: 'You & Me', artist: 'Jennie', streams: '987,654', date: mockDate },
-        ],
-        youtube: {
-            views: 950000000,
-            title: 'SOLO Official MV',
-            date: mockDate
+        // 2. Extract the last updated date
+        const dateElement = $('h2').filter(function() {
+            return $(this).text().includes('Top Songs | Current charts');
+        }).next('p').text();
+        
+        // Kworb date format is like: "Last updated: 2025/11/19"
+        const match = dateElement.match(/Last updated: (.*)/);
+        if (match && match[1]) {
+            lastUpdatedDate = new Date(match[1]).toLocaleString();
         }
-    };
-    // --- END: Implement your actual scraping logic here ---
-}
+
+        // 3. Select the main table rows (typically class 'sortable' or 'table-striped')
+        // We look for the main table body containing the songs
+        const $rows = $('table.sortable tbody tr');
+
+        $rows.each((i, el) => {
+            const $tds = $(el).find('td');
+
+            // Kworb table structure for this page is typically:
+            // TD[0]: Song Title (includes rank number)
+            // TD[1]: Total Streams
+            // TD[2]: As Lead Streams
+            // TD[3]: Solo Streams
+            // TD[4]: Daily Streams (This is the value we want for the streams column)
+            
+            // Check if we have enough columns (5 for daily streams)
+            if ($tds.length >= 5) {
+                const rawTitle = $tds.eq(0).text().trim();
+                const dailyStreams = $tds.eq(4).text().trim();
+
+                // Clean the title: Remove the rank number and potential special characters (*, #)
+                const titleMatch = rawTitle.match(/^[0-9\*#]+\s*(.*)$/);
+                const title = titleMatch ? titleMatch[1].trim() : rawTitle;
+                
+                // Add entry to our array
+                spotifyData.push({
+                    rank: i + 1, // Use the iteration index for rank
+                    title: title,
+                    artist: 'Jennie', // Hardcoded as this is her artist page
+                    streams: dailyStreams,
+                    date: lastUpdatedDate,
+                });
+            }
+        });
+
+    } catch (error) {
+        console.error("Error scraping Kworb data:", error);
+        // Fallback to empty data structure on error
+        lastUpdatedDate = new Date().toLocaleString();
+        return {
+            spotify: [],
+            youtube: {
+                views: 0,
+                title: 'Scraping Failed',
+                date: lastUpdatedDate
+            }
+        };
+    }
+
+    // --- YouTube Placeholder Data ---
+    // The Kworb page shown doesn't contain
