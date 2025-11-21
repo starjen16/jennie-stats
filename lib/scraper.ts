@@ -98,7 +98,20 @@ export async function scrapeData(): Promise<ScrapedData> {
                 date: lastUpdatedDate
             }
         };
-    }
+    } // <--- The catch block ends here
 
     // --- YouTube Placeholder Data ---
-    // The Kworb page shown doesn't contain
+    // The Kworb page shown doesn't contain YouTube data, so we'll return a static placeholder
+    // If you plan to scrape YouTube later, you'll replace this block.
+    const youtubeData = {
+        views: 950000000,
+        title: 'SOLO Official MV',
+        date: lastUpdatedDate
+    };
+    
+    // 4. Return the final structured data
+    return {
+        spotify: spotifyData,
+        youtube: youtubeData
+    };
+} // <--- THIS is the final missing brace for the async function scrapeData()
