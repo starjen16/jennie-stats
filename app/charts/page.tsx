@@ -1,13 +1,13 @@
 // app/charts/page.tsx
 
-// FIX 1: Force dynamic rendering to resolve "Dynamic server usage" error (from previous steps)
+// FIX: Force dynamic rendering to resolve "Dynamic server usage" error
 export const dynamic = 'force-dynamic';
 
 import { Metadata } from 'next';
-// FIX 2: Correct the import name from 'scrapeCharts' to the actual exported function 'scrapeData'
+// FIX: Correctly import the 'scrapeData' function
 import { scrapeData } from '@/lib/scraper'; 
 
-// Define the structure for the Spotify data (from your previous work)
+// --- Interfaces to mirror lib/scraper.ts ---
 interface SpotifyChartEntry {
     rank: number;
     title: string;
@@ -16,7 +16,6 @@ interface SpotifyChartEntry {
     date: string;
 }
 
-// Define the structure for the combined scraped data
 interface ScrapedData {
     spotify: SpotifyChartEntry[];
     youtube: {
@@ -25,15 +24,15 @@ interface ScrapedData {
         date: string;
     };
 }
-
+// ------------------------------------------
 
 export const metadata: Metadata = {
   title: 'Charts | JENNIE Stats',
   description: 'Spotify and YouTube chart data for JENNIE.',
 };
 
-// Function to fetch and process data from the API route (server-side)
 async function getChartData(): Promise<ScrapedData> {
+    // Calls the corrected logic in lib/scraper.ts
     const data = await scrapeData();
     return data;
 }
@@ -41,19 +40,19 @@ async function getChartData(): Promise<ScrapedData> {
 export default async function ChartsPage() {
     const chartData = await getChartData();
     
-    // FIX 3: Removed the problematic import for ChartsView 
-    // and replaced it with basic display logic to allow the build to succeed.
-    // You will need to re-implement your components later, but for now, we prioritize the build.
+    // Renders basic HTML and a table to replace the problematic ChartsView component.
     return (
         <main className="p-8">
-            <h1 className="text-3xl font-bold mb-6">Spotify Global Charts (Daily)</h1>
+            <h1 className="text-3xl font-bold mb-6">📈 JENNIE Performance Charts</h1>
             
+            {/* YouTube Section (Placeholder Data) */}
             <section className="bg-gray-800 p-4 rounded mb-8">
-                <h2 className="text-xl text-red-400">YouTube Stats</h2>
+                <h2 className="text-xl text-yellow-400">YouTube Stats (Static)</h2>
                 <p className="text-4xl font-mono mt-2">{chartData.youtube.views.toLocaleString()} VIEWS</p>
                 <p className="text-sm text-gray-400">"{chartData.youtube.title}" | Last Updated: {chartData.youtube.date}</p>
             </section>
             
+            {/* Spotify Section */}
             <h2 className="text-2xl font-semibold mb-4">Top 10 Spotify Global Chart Entries</h2>
             
             <div className="overflow-x-auto">
@@ -63,7 +62,7 @@ export default async function ChartsPage() {
                             <th className="px-4 py-3">Rank</th>
                             <th className="px-4 py-3">Title</th>
                             <th className="px-4 py-3">Artist</th>
-                            <th className="px-4 py-3">Streams (Popularity)</th>
+                            <th className="px-4 py-3">Popularity Score</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
@@ -79,10 +78,10 @@ export default async function ChartsPage() {
                 </table>
             </div>
 
-            {/* Fallback check */}
+            {/* Error Message when Spotify API fails */}
             {chartData.spotify.length === 0 && (
                 <div className="text-center text-red-500 mt-8 p-4 border border-red-500 bg-red-900 bg-opacity-20 rounded">
-                    Error: The system was unable to fetch data from the source. Please check Spotify credentials/logs.
+                    ⚠️ Error: Could not fetch data from the Spotify API. Check Vercel Environment Variables.
                 </div>
             )}
         </main>
