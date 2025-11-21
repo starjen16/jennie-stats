@@ -1,22 +1,23 @@
-// app/layout.tsx
-import "./globals.css";
-import Header from "./components/Header";
+import './globals.css'; 
+import Layout from './components/Layout'; // <-- ADD THIS IMPORT
 
-export const metadata = {
-  title: "Jennie Stats",
-  description: "Jennie's Global Streaming Dashboard",
-};
+// You can keep your existing Metadata
 
-// FIX: Added the explicit type for the 'children' prop
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  // Fixes the TypeScript error related to implicit 'any' type for children
+  children: React.ReactNode 
+}) {
   return (
     <html lang="en">
-      <body className="bg-black text-white min-h-screen">
-        <Header />
-        <main className="max-w-6xl mx-auto px-4 py-10">
+      {/* Set a default body class for consistent dark text on dark background */}
+      <body className="text-gray-100"> 
+        {/* <-- WRAP WITH THE NEW LAYOUT COMPONENT --> */}
+        <Layout>
           {children}
-        </main>
+        </Layout>
       </body>
     </html>
-  );
+  )
 }
