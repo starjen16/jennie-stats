@@ -30,15 +30,22 @@ interface ScrapedData {
 }
 
 
-// RENAME: Renamed from scrapeKWORBStats to scrapeData, and returns ScrapedData
+// This function fetches data from Kworb and is called directly by the Next.js Server Component.
 export async function scrapeData(): Promise<ScrapedData> {
     const kworbUrl = "https://kworb.net/spotify/artist/250b0WlC5VkOCoUsaCY84M_songs.html";
     const spotifyData: SpotifyChartEntry[] = [];
     let lastUpdatedDate = new Date().toLocaleString();
 
     try {
-        // 1. Fetch the HTML content
-        const { data } = await axios.get(kworbUrl);
+        // 1. Fetch the HTML content with a User-Agent header to bypass potential anti-scraping measures
+        const { data } = await axios.get(kworbUrl, {
+            headers: {
+                // Common desktop browser User-Agent string
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            // Set a timeout for the request (e.g., 10 seconds)
+            timeout: 10000 
+        });
         const $ = cheerio.load(data);
 
         // 2. Extract the last updated date
@@ -52,34 +59,26 @@ export async function scrapeData(): Promise<ScrapedData> {
             lastUpdatedDate = new Date(match[1]).toLocaleString();
         }
 
-        // 3. Select the main table rows (typically class 'sortable' or 'table-striped')
-        // We look for the main table body containing the songs
+        // 3. Select the main table rows
         const $rows = $('table.sortable tbody tr');
 
         $rows.each((i, el) => {
             const $tds = $(el).find('td');
-
-            // Kworb table structure for this page is typically:
-            // TD[0]: Song Title (includes rank number)
-            // TD[1]: Total Streams
-            // TD[2]: As Lead Streams
-            // TD[3]: Solo Streams
-            // TD[4]: Daily Streams (This is the value we want for the streams column)
             
-            // Check if we have enough columns (5 for daily streams)
+            // Kworb table structure for this page has Daily Streams at index 4
             if ($tds.length >= 5) {
                 const rawTitle = $tds.eq(0).text().trim();
                 const dailyStreams = $tds.eq(4).text().trim();
 
-                // Clean the title: Remove the rank number and potential special characters (*, #)
+                // Clean the title: Remove the rank number and potential special characters
                 const titleMatch = rawTitle.match(/^[0-9\*#]+\s*(.*)$/);
                 const title = titleMatch ? titleMatch[1].trim() : rawTitle;
                 
                 // Add entry to our array
                 spotifyData.push({
-                    rank: i + 1, // Use the iteration index for rank
+                    rank: i + 1,
                     title: title,
-                    artist: 'Jennie', // Hardcoded as this is her artist page
+                    artist: 'Jennie', 
                     streams: dailyStreams,
                     date: lastUpdatedDate,
                 });
@@ -87,8 +86,8 @@ export async function scrapeData(): Promise<ScrapedData> {
         });
 
     } catch (error) {
+        // If scraping fails (network or selector error), log it and return empty data
         console.error("Error scraping Kworb data:", error);
-        // Fallback to empty data structure on error
         lastUpdatedDate = new Date().toLocaleString();
         return {
             spotify: [],
@@ -98,11 +97,10 @@ export async function scrapeData(): Promise<ScrapedData> {
                 date: lastUpdatedDate
             }
         };
-    } // <--- The catch block ends here
+    } // <-- The catch block ends here
 
     // --- YouTube Placeholder Data ---
-    // The Kworb page shown doesn't contain YouTube data, so we'll return a static placeholder
-    // If you plan to scrape YouTube later, you'll replace this block.
+    // Keeping static placeholder for YouTube data since Kworb doesn't provide it
     const youtubeData = {
         views: 950000000,
         title: 'SOLO Official MV',
@@ -114,4 +112,4 @@ export async function scrapeData(): Promise<ScrapedData> {
         spotify: spotifyData,
         youtube: youtubeData
     };
-} // <--- THIS is the final missing brace for the async function scrapeData()
+} // <-- This is the final closing brace for the function (The one that was missing!)
