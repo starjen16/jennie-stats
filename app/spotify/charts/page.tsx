@@ -1,7 +1,7 @@
 // app/spotify/charts/page.tsx
-import { scrapeData } from '@/api/cron/route'; // <-- FINAL ATTEMPT AT PATH FIX
+import { scrapeData } from '@/lib/scraper'; // <-- FINAL, CORRECT IMPORT PATH
 
-// Define the structure for the Spotify data (from your previous work)
+// Define the structure for the Spotify data
 interface SpotifyChartEntry {
     rank: number;
     title: string;
@@ -20,7 +20,7 @@ interface ScrapedData {
     };
 }
 
-// Function to fetch and process data from the API route
+// Function to fetch and process data directly from the shared library
 async function getChartData(): Promise<ScrapedData> {
     // We call the scraper function directly for server-side rendering
     const data = await scrapeData();
@@ -36,22 +36,26 @@ export default async function SpotifyChartsPage() {
         data = await getChartData();
     } catch (e) {
         console.error("Failed to fetch data:", e);
-        error = "Failed to load data. The scraping endpoint may have failed.";
+        error = "Failed to load chart data. Check server logs for scraping errors.";
     }
 
-    if (error) {
+    if (error || !data || data.spotify.length === 0) {
+        // If data fetching failed entirely or no data was returned
         return (
-            <div className="p-4 bg-red-900/50 border border-red-500 rounded-lg text-red-100">
-                <h2 className="text-xl font-bold">Data Error</h2>
-                <p>{error}</p>
+            <div className="p-4 bg-gray-900 border border-gray-800 rounded-lg shadow-xl text-gray-200 space-y-4">
+                <h1 className="text-3xl font-extrabold text-red-500">Global Chart Rankings & Stats</h1>
+                <p className="text-sm text-gray-400">Data last updated: **N/A**</p>
+                <div className="p-4 bg-red-900/50 border border-red-500 rounded-lg text-red-100">
+                    <h2 className="text-xl font-bold">No statistics available right now.</h2>
+                    <p>{error || "The system is unable to fetch data from the source."}</p>
+                </div>
             </div>
         );
     }
 
     // --- Start of BCD Styling ---
-    const spotifyData = data?.spotify || [];
-    const youtubeData = data?.youtube || { views: 0, title: 'N/A', date: 'N/A' };
-
+    const spotifyData = data.spotify || [];
+    const youtubeData = data.youtube || { views: 0, title: 'N/A', date: 'N/A' };
 
     return (
         <div className="space-y-8">
@@ -79,7 +83,7 @@ export default async function SpotifyChartsPage() {
                         Top 50 Spotify Global Chart Entries
                     </h2>
                 </div>
-                
+
                 {/* BCD-Style Table */}
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-800">
