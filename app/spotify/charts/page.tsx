@@ -1,7 +1,7 @@
 // app/spotify/charts/page.tsx
-import { scrapeData } from '@/app/api/cron/route'; 
+import { scrapeData } from '../../../api/cron/route'; // <-- FIX APPLIED HERE
 
-// Define the structure for the Spotify data
+// Define the structure for the Spotify data (from your previous work)
 interface SpotifyChartEntry {
     rank: number;
     title: string;
@@ -22,6 +22,7 @@ interface ScrapedData {
 
 // Function to fetch and process data from the API route
 async function getChartData(): Promise<ScrapedData> {
+    // We call the scraper function directly for server-side rendering
     const data = await scrapeData();
     return data;
 }
