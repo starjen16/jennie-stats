@@ -1,7 +1,7 @@
 // lib/scraper.ts
 
-import axios from 'axios'; // CRITICAL FIX: Ensure this is present for TypeScript
-import { Buffer } from 'buffer'; // Explicitly import Buffer for Vercel build compatibility
+import axios from 'axios'; 
+import { Buffer } from 'buffer'; 
 
 // Interfaces for the final structured data expected by page.tsx
 interface SpotifyChartEntry {
@@ -21,6 +21,10 @@ interface ScrapedData {
     };
 }
 
+// Base URLs
+const SPOTIFY_ACCOUNT_URL = 'https://accounts.spotify.com/api/token'; // For Token Request
+const SPOTIFY_API_URL = 'https://api.spotify.com';    // For Data Request
+
 // ----------------------------------------------------
 // Step 1: Get Access Token (Client Credentials Flow)
 // ----------------------------------------------------
@@ -33,8 +37,8 @@ async function getAccessToken(): Promise<string> {
         throw new Error("Missing Spotify credentials.");
     }
 
-    // Standard Spotify API Token Endpoint
-    const tokenUrl = 'https://accounts.spotify.com/api/token'; 
+    // CRITICAL FIX: Use the correct Token URL constant
+    const tokenUrl = SPOTIFY_ACCOUNT_URL; 
     
     // FIX: Use .trim() to remove any hidden spaces causing 400 Bad Request
     const credentials = `${clientId.trim()}:${clientSecret.trim()}`;
@@ -49,7 +53,6 @@ async function getAccessToken(): Promise<string> {
         });
         return response.data.access_token;
     } catch (error) {
-        // Log the exact error from Spotify if available
         console.error("Error fetching Spotify access token:", (error as any).response?.data || (error as any).message);
         throw new Error("Failed to authenticate with Spotify API.");
     }
@@ -77,8 +80,8 @@ export async function scrapeData(): Promise<ScrapedData> {
         // Spotify Artist ID for JENNIE (from BLACKPINK)
         const artistId = '250b0WlC5VkOCoUsaCY84M'; 
         
-        // Standard Spotify API Endpoint for Get Artist's Top Tracks
-        const topTracksUrl = `https://api.spotify.com/v1/artists/${artistId}/top-tracks?country=US`; 
+        // CRITICAL FIX: Use the correct API Base URL and interpolation for artistId
+        const topTracksUrl = `${SPOTIFY_API_URL}/artists/${artistId}/top-tracks?market=US`; 
         
         // Fetch Top 10 Tracks for the artist
         const { data: topTracksResponse } = await axios.get(topTracksUrl, {
@@ -111,7 +114,8 @@ export async function scrapeData(): Promise<ScrapedData> {
         };
 
     } catch (error) {
-        console.error("Error in scrapeData (Spotify API):", (error as any).message);
+        // Now logging a helpful message to see the final error status
+        console.error("Error in scrapeData (Spotify API):", (error as any).response?.status, (error as any).message);
         // Return fallback data on failure
         return fallbackData;
     }
