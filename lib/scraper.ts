@@ -1,4 +1,6 @@
-import axios from 'axios'; // FIX: Re-added the missing axios import
+// lib/scraper.ts
+
+import axios from 'axios'; // CRITICAL FIX: Ensure this is present for TypeScript
 import { Buffer } from 'buffer'; // Explicitly import Buffer for Vercel build compatibility
 
 // Interfaces for the final structured data expected by page.tsx
@@ -6,7 +8,6 @@ interface SpotifyChartEntry {
     rank: number;
     title: string;
     artist: string;
-    // Using Spotify's 'popularity' score (0-100) instead of raw streams
     streams: string; 
     date: string;
 }
@@ -24,7 +25,6 @@ interface ScrapedData {
 // Step 1: Get Access Token (Client Credentials Flow)
 // ----------------------------------------------------
 async function getAccessToken(): Promise<string> {
-    // Get credentials from environment variables (local or Vercel)
     const clientId = process.env.SPOTIFY_CLIENT_ID;
     const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
@@ -33,10 +33,10 @@ async function getAccessToken(): Promise<string> {
         throw new Error("Missing Spotify credentials.");
     }
 
-    // CRITICAL FIX: The correct Spotify API Token Endpoint URL
+    // Standard Spotify API Token Endpoint
     const tokenUrl = 'https://accounts.spotify.com/api/token'; 
     
-    // CRITICAL FIX: Use .trim() to remove any hidden spaces causing 400 Bad Request
+    // FIX: Use .trim() to remove any hidden spaces causing 400 Bad Request
     const credentials = `${clientId.trim()}:${clientSecret.trim()}`;
     const authString = Buffer.from(credentials).toString('base64');
     
@@ -61,7 +61,7 @@ async function getAccessToken(): Promise<string> {
 export async function scrapeData(): Promise<ScrapedData> {
     let lastUpdatedDate = new Date().toLocaleString();
     
-    // Fallback data for API failure (Crucial for a Server Component)
+    // Fallback data for API failure
     const fallbackData: ScrapedData = {
         spotify: [],
         youtube: {
@@ -77,7 +77,7 @@ export async function scrapeData(): Promise<ScrapedData> {
         // Spotify Artist ID for JENNIE (from BLACKPINK)
         const artistId = '250b0WlC5VkOCoUsaCY84M'; 
         
-        // CRITICAL FIX: The correct Spotify API Endpoint for Get Artist's Top Tracks
+        // Standard Spotify API Endpoint for Get Artist's Top Tracks
         const topTracksUrl = `https://api.spotify.com/v1/artists/${artistId}/top-tracks?country=US`; 
         
         // Fetch Top 10 Tracks for the artist
@@ -91,11 +91,9 @@ export async function scrapeData(): Promise<ScrapedData> {
         const spotifyData: SpotifyChartEntry[] = topTracksResponse.tracks
             .slice(0, 10) // Take only the top 10
             .map((track: any, index: number) => ({
-                rank: index + 1, // Rank is based on the order Spotify returns them (most popular first)
+                rank: index + 1,
                 title: track.name,
-                // Handle multiple featured artists
                 artist: track.artists.map((a: any) => a.name).join(', '),
-                // Display the popularity score (0-100) as the 'streams' value
                 streams: `${track.popularity}`, 
                 date: lastUpdatedDate,
             }));
