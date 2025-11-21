@@ -60,12 +60,13 @@ export async function scrapeData(): Promise<ScrapedData> {
         }
 
         // 3. Select the main table rows
-        const $rows = $('table.sortable tbody tr');
+        // Using ':first' for the most robust selection of the main song list table
+        const $rows = $('table.sortable:first tbody tr');
 
         $rows.each((i, el) => {
             const $tds = $(el).find('td');
             
-            // Kworb table structure for this page has Daily Streams at index 4
+            // Kworb table structure for this page has Daily Streams at index 4 (5th column)
             if ($tds.length >= 5) {
                 const rawTitle = $tds.eq(0).text().trim();
                 const dailyStreams = $tds.eq(4).text().trim();
@@ -97,7 +98,7 @@ export async function scrapeData(): Promise<ScrapedData> {
                 date: lastUpdatedDate
             }
         };
-    } // <-- The catch block ends here
+    }
 
     // --- YouTube Placeholder Data ---
     // Keeping static placeholder for YouTube data since Kworb doesn't provide it
@@ -112,4 +113,4 @@ export async function scrapeData(): Promise<ScrapedData> {
         spotify: spotifyData,
         youtube: youtubeData
     };
-} // <-- This is the final closing brace for the function (The one that was missing!)
+}
